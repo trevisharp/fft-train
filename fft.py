@@ -1,6 +1,24 @@
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
+from tensorflow import (
+    convert_to_tensor, one_hot,
+    expand_dims
+)
+from tensorflow.data import Dataset
+from tensorflow.keras import (
+    models, layers, activations, 
+    optimizers, utils, losses, 
+    initializers, metrics, callbacks
+)
+
+def show(img):
+    plt.imshow(img, cmap='gray')
+    plt.show()
+
+def open(path):
+    img = cv.imread(path, cv.IMREAD_GRAYSCALE)
+    return img
 
 def fft(img):
     img = np.fft.fft2(img)
@@ -24,17 +42,9 @@ def norm(img):
     )
     return img
 
-def show(img):
-    plt.imshow(img, cmap='gray')
-    plt.show()
-
-def open(path):
-    img = cv.imread(path, cv.IMREAD_GRAYSCALE)
-    return img
-
 def bin(img):
     threshold, img = cv.threshold(
-        img, 110, 255, cv.THRESH_OTSU
+        img, 0, 255, cv.THRESH_OTSU
     )
     return img
 
@@ -45,7 +55,7 @@ def dilate(img, x, y):
 def erode(img, x, y):
     img = cv.erode(img, np.ones((x, y)))
 
-def p1(img):
+def p1(img, label):
     img = bin(img)
     img = dilate(img, 4, 4)
     img = fft(img)
@@ -53,13 +63,13 @@ def p1(img):
     img = norm(img)
     return img
     
-def p2(img):
+def p2(img, label):
     img = fft(img)
     img = mag(img)
     img = norm(img)
     return img
     
-def p3(img):
+def p3(img, label):
     img = bin(img)
     img = dilate(img, 4, 4)
     return img
@@ -100,3 +110,35 @@ model = models.Sequential([
         kernel_initializer = initializers.RandomNormal()
     )
 ])
+
+model.compile(
+    optimizer = optimizers.Adam(
+        learning_rate = 0.001
+    ),
+    loss = losses.CategoricalCrossentropy(),
+    metrics = [ metrics.CategoricalAccuracy() ]
+)
+
+data = [
+    convert_to_tensor(open("ds/0/0.png")),
+    convert_to_tensor(open("ds/0/1.png")),
+    convert_to_tensor(open("ds/1/16.png")),
+    convert_to_tensor(open("ds/1/40.png")),
+    convert_to_tensor(open("ds/0/3.png")),
+    convert_to_tensor(open("ds/1/45.png"))
+]
+data = expand_dims(data, axis=-1)
+data = Dataset.from_tensor_slices(data)
+
+labels = [0, 0, 1, 1, 0, 1]
+labels = convert_to_tensor(labels)
+labels = one_hot(labels, 6)
+labels = Dataset.from_tensor_slices(labels)
+
+dataset = Dataset.zip((data, labels))
+dataset = dataset.batch(2)
+
+model.fit(dataset.take(4), 
+    validation_data = dataset.skip(4),
+    epochs = 100
+)
