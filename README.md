@@ -1,3 +1,3 @@
 # fft-train
 
-Dataset: https://www.kaggle.com/datasets/ardamavi/sign-language-digits-dataset
+Dataset: https://www.kaggle.com/datasets/koryakinp/fingers
